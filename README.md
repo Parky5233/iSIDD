@@ -34,15 +34,14 @@ main.py:
   4. Specify if you're fine-tuning your model or evaluating it
   
   If you're fine-tuning:
-    1. Specify if you're first pre-training on iNaturalist dataset
-    If no: let the model fine-tune on iSIDD and the model will save to 'iSIDD_models' folder
-    If yes:
+    - Specify if you're first pre-training on iNaturalist dataset
+    - If yes:
       * Specify if you're loading the weights of a model already pre-trained on iNaturalist or if you with to pre-train yourself
       * If loading weights: select the model file from your 'INat_Models' folder. The code will then fine-tune on iSIDD and save the model to the 'iSIDD_models'
-    If no:
+    - If no:
       * The code will fine-tune on iSIDD and save to 'iSIDD_models'
   If you're evaluating:
-    1. Select your model weights to load. The confusion matrix will be saved with a name including/specifying the model you loaded and what data you evaluated it on in the 'eval_outputs' folder
+    - Select your model weights to load. The confusion matrix will be saved with a name including/specifying the model you loaded and what data you evaluated it on in the 'eval_outputs' folder
   
 decoupled.py:
 - This code is to be run when loading the image vector embeddings for the decoupled method. 
