@@ -16,6 +16,7 @@ In order to run this project you must have first installed the following depende
 - PIL: https://pypi.org/project/Pillow/
 - scikit-learn: https://scikit-learn.org/stable/install.html
 - tkinter: https://docs.python.org/3/library/tkinter.html
+- pandas: https://pandas.pydata.org/docs/getting_started/install.html
 
 ## Running Python Code
 Important Notes:
