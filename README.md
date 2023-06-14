@@ -61,13 +61,6 @@ visualize_attn.py:
   * https://github.com/tczhangzhi/VisionTransformer-Pytorch/issues/1
 - When you run the code, select the model whose weights you want to load and then an image you want to visualize attention on
 
-Future changes to come:
-- main.py having folder selection so datasets do not need to be located in the 'datasets' folder'
-- decoupled.py having file selection so pkl file specification is not 'hardcoded'
-- visualize_attn.py having file selection so image path is not 'hardcoded'
-  
-
-
 ## Datasets
 - iNaturalist-SS: 
   * Consists of 18,000 images and 12 classes of snake species
