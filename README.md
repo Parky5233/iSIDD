@@ -17,7 +17,14 @@ In order to run this project you must have first installed the following depende
 - scikit-learn: https://scikit-learn.org/stable/install.html
 - tkinter: https://docs.python.org/3/library/tkinter.html
 
-## Python File Details
+## Running Python Code
+Important Notes:
+- Your copies of the datasets should be located in a 'datasets' folder
+- Confusion matrix output is saved in an 'eval_outputs' folder
+- Model weights pretrained on iNaturalist will be stored in an 'iNat_models' folder
+- Model weights fine-tuned on iSIDD will be stored in an 'iSIDD_models' folder
+- Attention visualizations are saved in an 'attn_visualizations' folder 
+
 main.py:
 - This code is to be run to train or evaluate a given model (ViT, ResNet).
 - When running this code follow the following steps:
