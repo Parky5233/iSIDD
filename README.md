@@ -39,7 +39,8 @@ main.py:
       * Specify if you're loading the weights of a model already pre-trained on iNaturalist or if you with to pre-train yourself
       * If loading weights: select the model file from your 'INat_Models' folder. The code will then fine-tune on iSIDD and save the model to the 'iSIDD_models'
     - If no:
-      * The code will fine-tune on iSIDD and save to 'iSIDD_models'
+      * The code will fine-tune on iSIDD and save to 'iSIDD_models
+
   If you're evaluating:
     - Select your model weights to load. The confusion matrix will be saved with a name including/specifying the model you loaded and what data you evaluated it on in the 'eval_outputs' folder
   
