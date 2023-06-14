@@ -1,17 +1,21 @@
 import os
 import pickle
 from sklearn.neighbors import NearestCentroid
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 #dictionary for comparison against prediction
 class_dict = {}
-pkl_file = "resnet_image_vectors.pkl"
+print("Select image vector file (.pkl)")
+
+pkl_file = askopenfilename()
 count = 0
-for species in os.listdir('datasets/seg_snake/Train'):
+for species in os.listdir('datasets/iSIDD-regular/Train'):
     class_dict[species] = count
     count += 1
 
 #importing image vectors
-with open("image_embeddings/"+pkl_file,"rb") as f: #resnet_shuffled_snakeimage_vectors.pkl
+with open(pkl_file,"rb") as f: #resnet_shuffled_snakeimage_vectors.pkl
     vectors = pickle.load(f)
 
 X_train = []
@@ -41,7 +45,7 @@ clf.fit(X_train,y_train)
 classwise_acc = {}
 class_count = {}
 tot = 0
-for i in range(len(os.listdir('datasets/seg_snake/Train'))):
+for i in range(len(os.listdir('datasets/iSIDD-regular/Train'))):
     classwise_acc[i] = 0
     class_count[i] = 0
 #for i in range(len(X_test)):
