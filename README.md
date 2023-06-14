@@ -18,6 +18,12 @@ In order to run this project you must have first installed the following depende
 - tkinter: https://docs.python.org/3/library/tkinter.html
 - pandas: https://pandas.pydata.org/docs/getting_started/install.html
 
+## Disclaimer
+In order for the visualize_attn.py code to work a line in torchvision's vision_transformer.py must be modified
+Line 113 in the EncoderBlock forward must be changed:
+- From this: x, _ = self.self_attention(x, x, x, need_weights=False)
+- To this: x, avg_weights = self.self_attention(x, x, x, need_weights=True)
+
 ## Running Python Code
 Important Notes:
 - Your copies of the datasets should be located in a 'datasets' folder
