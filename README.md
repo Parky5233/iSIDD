@@ -26,7 +26,6 @@ Line 113 in the EncoderBlock forward must be changed:
 
 ## Running Python Code
 Important Notes:
-- Your copies of the datasets should be located in a 'datasets' folder
 - Confusion matrix output is saved in an 'eval_outputs' folder
 - Model weights pretrained on iNaturalist will be stored in an 'iNat_models' folder
 - Model weights fine-tuned on iSIDD will be stored in an 'iSIDD_models' folder
@@ -35,7 +34,7 @@ Important Notes:
 main.py:
 - This code is to be run to train or evaluate a given model (ViT, ResNet).
 - When running this code follow the following steps:
-  1. Provide name of dataset folder (should be a subfolder within your "datasets" folder)
+  1. Provide the dataset folder (should contain two subfolders Train and Val)
   2. Provide model: 'ViT' or 'resnet'
   3. Specify if you're fine-tuning with weighted cross entropy loss 'Y' or 'N'
   4. Specify if you're fine-tuning your model or evaluating it
@@ -60,7 +59,7 @@ visualize_attn.py:
 - This code made use of multiple references:
   * https://colab.research.google.com/github/cifkao/nopdb/blob/main/docs/pytorch_tutorial.ipynb#scrollTo=TZgFMHMSU305
   * https://github.com/tczhangzhi/VisionTransformer-Pytorch/issues/1
-- Currently in the code an image path is specified (line 75) and attention maps are generated for all 12 layers of the vision transformer based on this image.
+- When you run the code, select the model whose weights you want to load and then an image you want to visualize attention on
 
 Future changes to come:
 - main.py having folder selection so datasets do not need to be located in the 'datasets' folder'
