@@ -4,13 +4,14 @@ from sklearn.neighbors import NearestCentroid
 
 #dictionary for comparison against prediction
 class_dict = {}
+pkl_file = "resnet_image_vectors.pkl"
 count = 0
 for species in os.listdir('datasets/seg_snake/Train'):
     class_dict[species] = count
     count += 1
 
 #importing image vectors
-with open("image_embeddings/resnet_image_vectors.pkl","rb") as f: #resnet_shuffled_snakeimage_vectors.pkl
+with open("image_embeddings/"+pkl_file,"rb") as f: #resnet_shuffled_snakeimage_vectors.pkl
     vectors = pickle.load(f)
 
 X_train = []

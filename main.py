@@ -1,6 +1,8 @@
 import copy
 import os
 import time
+import tkinter.filedialog
+
 import torch
 import torch.nn as nn
 import torch.utils.data.dataloader as DL
@@ -17,11 +19,13 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 from torch.autograd import Variable
 
-ds_prompt = 'Provide the name of the folder containing your images. Options include: '
-for ds in os.listdir("datasets"):
-    ds_prompt = ds_prompt + " "+ds
+print("Select your dataset folder (should contain two subfolders Train/Val)")
+dataset_folder = tkinter.filedialog.askdirectory()
+# ds_prompt = 'Provide the name of the folder containing your images. Options include: '
+# for ds in os.listdir("datasets"):
+#     ds_prompt = ds_prompt + " "+ds
 
-path = "datasets/"+input(ds_prompt+" \n").strip()
+path = dataset_folder#"datasets/"+input(ds_prompt+" \n").strip()
 
 def calc_cwb(beta=0.9):
     #calculates balance factor on effective number of samples
@@ -60,14 +64,6 @@ def set_seed(x=42):
     torch.manual_seed(x)
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(x)
 
-#Things to test:
-#1. ViT ce - trained on regular images, evaluated on segmented images - ViT_wce_False_seg_False_0.7667_FT_ONECYCLE.pkl - ViT_wce_False_seg_False_0.7667_FT_ONECYCLE_output_on_seg.png
-#2. ResNet ce - trained on regular iamges, evalauted on segmented images - resnet_wce_False_seg_False_0.5333_FT_ONECYCLE.pkl - resnet_wce_False_seg_False_0.5333_FT_ONECYCLE_output_on_seg.png
-#3. ViT wce - trained on regular images, evalauted on segmented images - ViT_wce_True_seg_False_0.8000_FT_ONECYCLE.pkl - ViT_wce_True_seg_False_0.8000_FT_ONECYCLE_output_on_seg.png
-#4. ViT wce - trained on segmented iamges, evaluated on segmented images - ViT_wce_True_seg_True_0.7333_FT_ONECYCLE - ViT_wce_True_seg_True_0.7333_FT_ONECYCLE_output_on_seg.png
-#5. ViT ce - trained on segmented images, evaluated on segmented images - ViT_wce_False_seg_True_0.7333_FT_ONECYCLE.pkl - ViT_wce_False_seg_True_0.7333_FT_ONECYCLE_output_on_seg.png
-
-
 #setup
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.cuda.set_device(device)
@@ -77,7 +73,7 @@ set_seed()
 #hyperparameters
 batch_size = 16
 inp = input('Please provide the model you wish to use \'ViT\' or \'resnet\': ')
-model_name = inp.strip() #ViT or resnet
+model_name = inp.strip().lower() #ViT or resnet
 shuffle = False
 epochs = 15
 lr = 1e-3
@@ -133,7 +129,7 @@ ft_dataloaders = {"train": train_loader, "val": val_loader}
 #######################################################################################################################
 
 #setting up ViT model
-if model_name == "ViT":
+if model_name == "vit":
     model = torchvision.models.vit_b_16(weights=torchvision.models.ViT_B_16_Weights.DEFAULT,progress=True).to(device)
     model.heads = nn.Sequential(nn.Linear(768,21,bias=True)).to(device)
 else:#setting up ResNet101 model
@@ -240,7 +236,7 @@ def get_img_emb(image):
     :return:
     '''
     model.eval()
-    if model_name == 'ViT':
+    if model_name == 'vit':
         layer = model._modules.get('encoder').ln
         emb = torch.zeros(151296)
     else:
@@ -259,12 +255,12 @@ def get_img_emb(image):
 
 if __name__ == '__main__':
 
-    inp = input('Are you training your model enter \'Y\' if so and \'N\' if evaluating: ')
+    inp = input('Are you fine-tuning your model enter \'Y\' if so and \'N\' if evaluating: ')
 
     fine_tune = True
 
-    if inp == "Y":#we are training
-        inp = input('Are you training/using a model fine-tuned on the INaturalist dataset? Enter \'Y\' if so and \'N\' if not: ')
+    if inp.lower().strip() == "y":#we are training
+        inp = input('Are you fine-tuning/using a model fine-tuned on the INaturalist dataset? Enter \'Y\' if so and \'N\' if not: ')
         if inp.lower().strip() == 'y':
             fine_tune = True
         else:
@@ -272,7 +268,7 @@ if __name__ == '__main__':
         if fine_tune:
             #finetuning on the INaturalist dataset
             inp = input('Are you loading a pre-trained model? enter \'Y\' if so and \'N\' if pre-training a model for the first time: ')
-            if inp == "N": #pre-training model for first time
+            if inp.lower().strip() == "n": #pre-training model for first time
                 train_size = len(ft_train_dataset)
                 fine_tune_epochs = 15
                 print("Pretraining on INat Dataset")

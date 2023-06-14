@@ -55,7 +55,8 @@ def plot_weights(input, patch_weights):
         plot[:, y:y + 16, x:x + 16] *= patch_weights[i]
     vis_att = inv_transform(plot, normalize=False)
     ipd.display(vis_att)
-    vis_att.save(filename.split("/")[6] + "_layer_" + str(l) + "_attention_visual_" + img_path.split("\\")[3])
+    img_path_arr = img_path.split("/")
+    vis_att.save("attn_visualizations/"+filename.split("/")[6].replace(".pkl","") + "_layer_" + str(l) + "_attention_visual_" + img_path_arr[len(img_path_arr)-1])
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.cuda.set_device(device)
@@ -67,12 +68,15 @@ model.heads = nn.Sequential(nn.Linear(768,21,bias=True)).to(device)
 
 #print(model)
 
-Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
+Tk().withdraw()
 filename = askopenfilename()
 if not filename is None:
+    print("select model weights to use")
     model.load_state_dict(torch.load(filename))
     model.eval()
-    img_path = "datasets\sq_strt_snake\Val\Anju\download_1-1.jpg"
+    print("select image to visualize attention on")
+    img_path = askopenfilename()
+    #img_path = "datasets/iSIDD-regular/Val/cavatappi/cavatappi_2.jpg"
     x = val_transforms(Image.open(img_path)).to(device)
     print(x.size())
     for l in range(len(model.encoder.layers)):
