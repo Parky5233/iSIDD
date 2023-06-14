@@ -1,5 +1,7 @@
 import os
 import pickle
+import tkinter.filedialog
+
 from sklearn.neighbors import NearestCentroid
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
@@ -10,7 +12,10 @@ print("Select image vector file (.pkl)")
 
 pkl_file = askopenfilename()
 count = 0
-for species in os.listdir('datasets/iSIDD-regular/Train'):
+
+dataset_dir = tkinter.filedialog.askdirectory()
+print("Select folder of dataset with the proper classes")
+for species in os.listdir(dataset_dir+"/Train"):
     class_dict[species] = count
     count += 1
 
