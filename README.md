@@ -33,12 +33,6 @@ To use the image embeddings for either ViT or ResNet when running the decoupled.
 - https://brocku-my.sharepoint.com/:f:/g/personal/yli2_brocku_ca/ErIZKetroOlLqA_lzHRzf3oBbogmBdhep3WyUXQS1xkXtA?e=HX4B1P
 
 ## Running Python Code
-Important Notes:
-- Confusion matrix output is saved in an 'eval_outputs' folder
-- Model weights pretrained on iNaturalist will be stored in an 'iNat_models' folder
-- Model weights fine-tuned on iSIDD will be stored in an 'iSIDD_models' folder
-- Attention visualizations are saved in an 'attn_visualizations' folder 
-
 main.py:
 - This code is to be run to train or evaluate a given model (ViT, ResNet).
 - When running this code follow the following steps:
