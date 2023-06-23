@@ -225,7 +225,9 @@ def eval_model(model,filename):
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     sb.heatmap(df_cm, annot=True)
-    plt.savefig("eval_outputs/"+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'.png')
+    print("Please specify a save folder")
+    save_folder = tkinter.filedialog.askdirectory()
+    plt.savefig(save_folder+"/"+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'.png')
     print("Confusion matrix saved as "+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'.png')
 
 #https://discuss.pytorch.org/t/feature-extraction-in-torchvision-models-vit-b-16/148029
@@ -284,7 +286,9 @@ if __name__ == '__main__':
                                                                              epochs=fine_tune_epochs, pct_start=0.3), fine_tune_epochs,
                                          ft_dataloaders, ft_datasets)
                 str_acc = str(acc).split(",")[0].split("(")[1]
-                torch.save(model.state_dict(), "INat_Models/"+save_name + str_acc + "_INAT_ONECYCLE.pkl")
+                print("Please specify a save folder")
+                save_folder = tkinter.filedialog.askdirectory()
+                torch.save(model.state_dict(), save_folder+"/"+save_name + str_acc + "_INAT_ONECYCLE.pkl")
             else:#using a previously pre-trained model and loading it to fine-tune on SID
                 Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
                 filename = askopenfilename(defaultextension=".pickle")
@@ -310,7 +314,9 @@ if __name__ == '__main__':
             str_acc = str(acc).split(",")[0].split("(")[1]
 
             name = save_name + str_acc + "_FT_ONECYCLE.pkl"
-            torch.save(model.state_dict(), "iSIDD_models/"+name)#saving models to folder
+            print("Please specify a save folder")
+            save_folder = tkinter.filedialog.askdirectory()
+            torch.save(model.state_dict(), save_folder+"/"+name)#saving models to folder
         else:
             #fine-tuning model directly on SID dataset without prior pre-training on INat (just default pytorch weights)
             train_size = len(train_dataset)
@@ -322,7 +328,9 @@ if __name__ == '__main__':
             model, acc = train_model(model,criterion,optimizer,torch.optim.lr_scheduler.OneCycleLR(optimizer,max_lr=lr/2,steps_per_epoch=round(train_size/batch_size),
                                                                                                    epochs=epochs,pct_start=0.3), epochs,dataloaders,datasets)
             str_acc = str(acc).split(",")[0].split("(")[1]
-            torch.save(model.state_dict(),"iSIDD_models/"+save_name+str_acc+"_ONECYCLE.pkl")
+            print("Please specify a save folder")
+            save_folder = tkinter.filedialog.askdirectory()
+            torch.save(model.state_dict(),save_folder+"/"+save_name+str_acc+"_ONECYCLE.pkl")
     else: #evaluating the model on a given dataset and producing confusion matrix
         Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
         filename = askopenfilename(defaultextension=".pickle")

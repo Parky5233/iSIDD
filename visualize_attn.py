@@ -10,6 +10,7 @@ from PIL import Image
 import random as r
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
+import tkinter
 
 val_transforms = T.Compose([
     T.Resize((224,224)),
@@ -56,7 +57,9 @@ def plot_weights(input, patch_weights):
     vis_att = inv_transform(plot, normalize=False)
     ipd.display(vis_att)
     img_path_arr = img_path.split("/")
-    vis_att.save("attn_visualizations/"+filename.split("/")[6].replace(".pkl","") + "_layer_" + str(l) + "_attention_visual_" + img_path_arr[len(img_path_arr)-1])
+    print("Please select a folder to save attention maps to")
+    save_folder = tkinter.filedialog.askdirectory()
+    vis_att.save(save_folder+"/"+filename.split("/")[6].replace(".pkl","") + "_layer_" + str(l) + "_attention_visual_" + img_path_arr[len(img_path_arr)-1])
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.cuda.set_device(device)

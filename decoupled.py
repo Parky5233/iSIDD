@@ -50,7 +50,9 @@ clf.fit(X_train,y_train)
 classwise_acc = {}
 class_count = {}
 tot = 0
-for i in range(len(os.listdir('datasets/iSIDD-regular/Train'))):
+print("Please select a folder which contains sub-folders for each class (ex: Train folder of a dataset)")
+class_folder = tkinter.filedialog.askdirectory()
+for i in range(len(os.listdir(class_folder))):
     classwise_acc[i] = 0
     class_count[i] = 0
 #for i in range(len(X_test)):
