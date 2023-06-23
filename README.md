@@ -24,6 +24,14 @@ Line 113 in the EncoderBlock forward must be changed:
 - From this: x, _ = self.self_attention(x, x, x, need_weights=False)
 - To this: x, avg_weights = self.self_attention(x, x, x, need_weights=True)
 
+## Model Weights
+To use the weights of the models we fine-tuned please visit the following link and download the subfolders:
+- https://brocku-my.sharepoint.com/:f:/g/personal/yli2_brocku_ca/EghV4h7sdEdDnKztWKHhFhYBae2q1g4rhkx6KJ1AiaSFxw?e=7BU8Z8
+
+## Image Embedding Vectors
+To use the image embeddings for either ViT or ResNet when running the decoupled.py code download the files from here:
+- https://brocku-my.sharepoint.com/:f:/g/personal/yli2_brocku_ca/ErIZKetroOlLqA_lzHRzf3oBbogmBdhep3WyUXQS1xkXtA?e=HX4B1P
+
 ## Running Python Code
 Important Notes:
 - Confusion matrix output is saved in an 'eval_outputs' folder
