@@ -3,6 +3,7 @@ import os
 import time
 import tkinter.filedialog
 
+import sklearn
 import torch
 import torch.nn as nn
 import torch.utils.data.dataloader as DL
@@ -18,19 +19,19 @@ from sklearn.metrics import confusion_matrix
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 from torch.autograd import Variable
+import shutil
 
+#selecting dataset folder
 print("Select your dataset folder (should contain two subfolders Train/Val)")
 dataset_folder = tkinter.filedialog.askdirectory()
-# ds_prompt = 'Provide the name of the folder containing your images. Options include: '
-# for ds in os.listdir("datasets"):
-#     ds_prompt = ds_prompt + " "+ds
+class_num = len(os.listdir(dataset_folder+"/Train"))
+path = dataset_folder
 
-path = dataset_folder#"datasets/"+input(ds_prompt+" \n").strip()
-
+#class imbalance weighting functions
 def calc_cwb(beta=0.9):
     #calculates balance factor on effective number of samples
     #count number of images/class
-    counts = [0]*21
+    counts = [0]*class_num
     i = 0
     tot = 0
     for folder in os.listdir("/"+path+"/Train"):
@@ -45,7 +46,7 @@ def calc_cwb(beta=0.9):
     return torch.cuda.FloatTensor(cwb)
 
 def calc_alph(beta=0.9):
-    counts = [0] * 21
+    counts = [0] * class_num
     i = 0
     tot = 0
     for folder in os.listdir(path+"/Train"):
@@ -59,6 +60,9 @@ def calc_alph(beta=0.9):
     return torch.cuda.FloatTensor(weights)
 
 def set_seed(x=42):
+    '''
+    This function sets the seed for reproducibility
+    '''
     r.seed(x)
     np.random.seed(x)
     torch.manual_seed(x)
@@ -72,10 +76,11 @@ set_seed()
 
 #hyperparameters
 batch_size = 16
-inp = input('Please provide the model you wish to use \'ViT\' or \'resnet\': ')
+resolution = 1000
+inp = input('Please provide the model you wish to use \'ViT\'(1) or \'resnet\'(2): ')
 model_name = inp.strip().lower() #ViT or resnet
 shuffle = False
-epochs = 15
+epochs = 100
 lr = 1e-3
 inp = input('Are you using weighted ce? (Y) (N): ')
 if inp.lower() == 'y':
@@ -83,9 +88,9 @@ if inp.lower() == 'y':
 else:
     weighted_ce = False
 
-#loading dataset and transforming for input to ViT
+#loading dataset and transforming for input to model
 train_transforms = T.Compose([
-    T.Resize((224,224)),
+    T.Resize((resolution,resolution)),
     T.RandomHorizontalFlip(p=0.5),
     T.RandomVerticalFlip(p=0.5),
     T.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
@@ -98,7 +103,7 @@ train_transforms = T.Compose([
 ])
 
 val_transforms = T.Compose([
-    T.Resize((224,224)),
+    T.Resize((resolution,resolution)),
     T.ToTensor(),
     T.Normalize(
         mean=[0.5, 0.5, 0.5],
@@ -106,8 +111,10 @@ val_transforms = T.Compose([
     )
 ])
 
-save_name = model_name+"_wce_"+str(weighted_ce)+"_"+path.split("/")[1]+"_"
+#building the filename for later when we save the model weights
+save_name = model_name+"_wce_"+str(weighted_ce)+"_"+path.split("/")[1]+"_e"+str(epochs)+"_"
 
+#preparing datasets using dataloaders
 train_dataset = torchvision.datasets.ImageFolder(root=path+"/Train",transform=train_transforms)
 val_dataset = torchvision.datasets.ImageFolder(root=path+"/Val",transform=val_transforms)
 
@@ -117,41 +124,28 @@ val_loader = DL.DataLoader(val_dataset,batch_size=len(val_dataset),shuffle=False
 datasets = {"train":train_dataset, "val":val_dataset}
 dataloaders = {"train":train_loader,"val":val_loader}
 
-ft_train_dataset = torchvision.datasets.ImageFolder(root="datasets/iNaturalist-SS/Train", transform=train_transforms)
-ft_val_dataset = torchvision.datasets.ImageFolder(root="datasets/iNaturalist-SS/Val", transform=val_transforms)
-
-ft_train_loader = DL.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-ft_val_loader = DL.DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=False)
-
-ft_datasets = {"train": train_dataset, "val": val_dataset}
-ft_dataloaders = {"train": train_loader, "val": val_loader}
-
-#######################################################################################################################
-
-#setting up ViT model
-if model_name == "vit":
+#setting up model
+if model_name == "1":
     model = torchvision.models.vit_b_16(weights=torchvision.models.ViT_B_16_Weights.DEFAULT,progress=True).to(device)
-    model.heads = nn.Sequential(nn.Linear(768,21,bias=True)).to(device)
+    model.heads = nn.Sequential(nn.Linear(768,class_num,bias=True)).to(device)
 else:#setting up ResNet101 model
     model = torchvision.models.resnet101(weights=torchvision.models.ResNet101_Weights.DEFAULT,progress=True).to(device)
-    model.fc = nn.Linear(in_features=2048,out_features=21,bias=True).to(device)
+    model.fc = nn.Linear(in_features=2048,out_features=class_num,bias=True).to(device)
 
-#print(model)
-
+#setting up optimizer with correct weighting function
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 if weighted_ce:
     criterion = nn.CrossEntropyLoss(weight=calc_alph()).to(device)
 else:
     criterion = nn.CrossEntropyLoss().to(device)
 
-#######################################################################################################################
-
 #model training
-def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,dataset):
+def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,dataset,plot):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
+    acc_vec = []
 
     for epoch in range(num_epochs):
         print(f'Epoch {epoch}/{num_epochs-1}')
@@ -190,6 +184,9 @@ def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,datase
 
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
+            if plot and phase == 'val':
+                acc_vec.append(epoch_acc)
+
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
@@ -200,6 +197,17 @@ def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,datase
 
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
     print(f'Best val acc: {best_acc:4f}')
+
+    if plot:
+        acc_vec = list(torch.tensor(acc_vec,device="cpu"))
+        plt.plot(list(range(0,len(acc_vec))),acc_vec)
+        if model_name.__eq__("1"):
+            plt.title("ViT "+str(resolution))
+        else:
+            plt.title("ResNet "+str(resolution))
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy")
+        plt.savefig(model_name+"_e"+str(epochs)+"acc_plot_"+str(resolution)+".png")
 
     model.load_state_dict(best_model_wts)
     return model, best_acc
@@ -218,136 +226,78 @@ def eval_model(model,filename):
     classes = train_dataset.classes
 
     cm = confusion_matrix(y_true,y_preds)
-    df_cm = pd.DataFrame(cm, index=[i for i in classes], columns=[i for i in classes])
 
-    plt.figure(figsize=(12, 7))
+    df_cm = pd.DataFrame(cm, index=[i for i in classes], columns=[i for i in classes])
+    bal_acc = round(sklearn.metrics.balanced_accuracy_score(y_true, y_preds),4)
+    plt.figure(figsize=(50, 30))
     plt.title("Confusion Matrix")
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     sb.heatmap(df_cm, annot=True)
     print("Please specify a save folder")
     save_folder = tkinter.filedialog.askdirectory()
-    plt.savefig(save_folder+"/"+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'.png')
-    print("Confusion matrix saved as "+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'.png')
+    plt.savefig(save_folder+"/"+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'_balacc_'+str(bal_acc)+'.png')
+    print("Confusion matrix saved as "+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'_balacc_'+str(bal_acc)+'.png')
 
-#https://discuss.pytorch.org/t/feature-extraction-in-torchvision-models-vit-b-16/148029
-def get_img_emb(image):
+def sort_data():
     '''
-    Due to ViT's linear projection, the output is a 1x151296 vector
-    :param image:
-    :return:
+    This method takes an unsorted dataset and splits it into Train/Val based on the specified train_split
     '''
-    model.eval()
-    if model_name == 'vit':
-        layer = model._modules.get('encoder').ln
-        emb = torch.zeros(151296)
-    else:
-        layer = model._modules.get('avgpool')
-        emb = torch.zeros(2048)
-    img = Image.open(image).convert('RGB')
-    trans_img = Variable((val_transforms(img)).unsqueeze(0)).to(device) #not sure about the unsqueeze
+    new_folder = 'datasets/mass_1k_final'
+    train_split = 0.85
+    for folder in os.listdir(dataset_folder):
+        #making folders for sorted dataset
+        if not os.path.isdir(new_folder+"/Train/"+folder):
+            os.mkdir(new_folder+"/Train/"+folder)
+        if not os.path.isdir(new_folder+"/Val/"+folder):
+            os.mkdir(new_folder+"/Val/"+folder)
 
-    def copy_data(m,i,o):
-        emb.copy_(o.data.reshape(o.data.size(1)*o.data.size(2)))
-    h = layer.register_forward_hook(copy_data)
-    model(trans_img)
-    h.remove()
-    return emb.tolist()
+        count = 0
+        size = len(os.listdir(dataset_folder+"/"+folder))
+        if size == 2:
+            lim = 1
+        elif size == 3:
+            lim = 2
+        elif size == 4:
+            lim = 3
+        else:
+            lim = round(len(os.listdir(dataset_folder+"/"+folder))*train_split)
+        for image in os.listdir(dataset_folder+"/"+folder):
+            if count < lim:
+                shutil.copy(dataset_folder+"/"+folder+"/"+image, new_folder+"/Train/"+folder)
+            else:
+                shutil.copy(dataset_folder+"/"+folder+"/"+image, new_folder+"/Val/"+folder)
+            count += 1
 
 
 if __name__ == '__main__':
+    inp = input('Are you training your model enter \'Y\' if so and \'N\' if evaluating: ')
 
-    inp = input('Are you fine-tuning your model enter \'Y\' if so and \'N\' if evaluating: ')
+    if inp.lower().strip() == "y":  # we are training
+        # training model directly on SID dataset
+        train_size = len(train_dataset)
 
-    fine_tune = True
+        model, acc = train_model(model, criterion, optimizer, torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr,
+                                                                                                  steps_per_epoch=round(
+                                                                                                      train_size / batch_size),
+                                                                                                  epochs=1,
+                                                                                                  pct_start=0.99), 1,
+                                 dataloaders, datasets, plot=False)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr / 2)
 
-    if inp.lower().strip() == "y":#we are training
-        inp = input('Are you fine-tuning/using a model fine-tuned on the INaturalist dataset? Enter \'Y\' if so and \'N\' if not: ')
-        if inp.lower().strip() == 'y':
-            fine_tune = True
-        else:
-            fine_tune = False
-        if fine_tune:
-            #finetuning on the INaturalist dataset
-            inp = input('Are you loading a pre-trained model? enter \'Y\' if so and \'N\' if pre-training a model for the first time: ')
-            if inp.lower().strip() == "n": #pre-training model for first time
-                train_size = len(ft_train_dataset)
-                fine_tune_epochs = 15
-                print("Pretraining on INat Dataset")
-                model, acc = train_model(model, criterion, optimizer,
-                                         torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr,
-                                                                             steps_per_epoch=round(train_size / batch_size),
-                                                                             epochs=1, pct_start=0.99), 1, ft_dataloaders,
-                                         ft_datasets)
-                optimizer = torch.optim.Adam(model.parameters(), lr=lr / 2)
-                model, acc = train_model(model, criterion, optimizer,
-                                         torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr / 2,
-                                                                             steps_per_epoch=round(train_size / batch_size),
-                                                                             epochs=fine_tune_epochs, pct_start=0.3), fine_tune_epochs,
-                                         ft_dataloaders, ft_datasets)
-                str_acc = str(acc).split(",")[0].split("(")[1]
-                print("Please specify a save folder")
-                save_folder = tkinter.filedialog.askdirectory()
-                torch.save(model.state_dict(), save_folder+"/"+save_name + str_acc + "_INAT_ONECYCLE.pkl")
-            else:#using a previously pre-trained model and loading it to fine-tune on SID
-                Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
-                filename = askopenfilename(defaultextension=".pickle")
-                if not filename is None:
-                    print(filename.split("/")[5])
-                    model.load_state_dict(torch.load(filename))
-            #fine-tuning on chosen snake dataset from SID
-            train_size = len(train_dataset)
-            print("-" * 10)
-            print("Fine-tuning on "+path)
-            model, acc = train_model(model, criterion, optimizer,
-                                     torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr,
-                                                                         steps_per_epoch=round(train_size / batch_size),
-                                                                         epochs=1, pct_start=0.99), 1, dataloaders,
-                                     datasets)
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr / 2)
-
-            model, acc = train_model(model, criterion, optimizer,
-                                     torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr / 2,
-                                                                         steps_per_epoch=round(train_size / batch_size),
-                                                                         epochs=epochs, pct_start=0.3), epochs,
-                                     dataloaders, datasets)
-            str_acc = str(acc).split(",")[0].split("(")[1]
-
-            name = save_name + str_acc + "_FT_ONECYCLE.pkl"
-            print("Please specify a save folder")
-            save_folder = tkinter.filedialog.askdirectory()
-            torch.save(model.state_dict(), save_folder+"/"+name)#saving models to folder
-        else:
-            #fine-tuning model directly on SID dataset without prior pre-training on INat (just default pytorch weights)
-            train_size = len(train_dataset)
-
-            model, acc = train_model(model,criterion,optimizer,torch.optim.lr_scheduler.OneCycleLR(optimizer,max_lr=lr,steps_per_epoch=round(train_size/batch_size),
-                                                                                                   epochs=1,pct_start=0.99), 1,dataloaders,datasets)
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr/2)
-
-            model, acc = train_model(model,criterion,optimizer,torch.optim.lr_scheduler.OneCycleLR(optimizer,max_lr=lr/2,steps_per_epoch=round(train_size/batch_size),
-                                                                                                   epochs=epochs,pct_start=0.3), epochs,dataloaders,datasets)
-            str_acc = str(acc).split(",")[0].split("(")[1]
-            print("Please specify a save folder")
-            save_folder = tkinter.filedialog.askdirectory()
-            torch.save(model.state_dict(),save_folder+"/"+save_name+str_acc+"_ONECYCLE.pkl")
-    else: #evaluating the model on a given dataset and producing confusion matrix
+        model, acc = train_model(model, criterion, optimizer,
+                                 torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr / 2,
+                                                                     steps_per_epoch=round(train_size / batch_size),
+                                                                     epochs=epochs, pct_start=0.3), epochs, dataloaders,
+                                 datasets,plot=True)
+        str_acc = str(acc).split(",")[0].split("(")[1]
+        print("Please specify a save folder")
+        save_folder = tkinter.filedialog.askdirectory()
+        torch.save(model.state_dict(), save_folder + "/" + save_name + str_acc + "_ONECYCLE.pkl")
+    else:
         Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
         filename = askopenfilename(defaultextension=".pickle")
         if not filename is None:
             print(filename.split("/")[5])
             model.load_state_dict(torch.load(filename))
-            eval_model(model,filename)
-        # print("Extracting image embeddings")
-        # image_vectors = {"Train":{},"Val":{}}
-        # for s_class in os.listdir(path + "/Train"):
-        #     image_vectors["Train"][s_class] = []
-        #     image_vectors["Val"][s_class] = []
-        # for phase in ['Train', 'Val']:
-        #     for species in os.listdir(path + "/" + phase):
-        #         for image in os.listdir(path + "/" +phase+ "/" + species):
-        #             image_vectors[phase][species].append(
-        #                 get_img_emb(path + "/" + phase + "/" + species + "/" + image))
-        # with open(model_name+'_'+path+'_image_vectors.pkl','wb') as fp:
-        #     pickle.dump(image_vectors,fp)
-        #     print("dict saved")
+            eval_model(model, filename)
