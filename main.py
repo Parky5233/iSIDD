@@ -76,7 +76,7 @@ set_seed()
 
 #hyperparameters
 batch_size = 16
-resolution = 1000
+resolution = 224 #1000: 58.49, 512: 56.6, 224: 31.13
 inp = input('Please provide the model you wish to use \'ViT\'(1) or \'resnet\'(2): ')
 model_name = inp.strip().lower() #ViT or resnet
 shuffle = False
@@ -175,12 +175,14 @@ def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,datase
                         optimizer.step()
 
                 running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                for pred in range(0,len(preds)):#running corrects may be not correctly calculated
+                    if (preds[pred] == labels.data[pred]):
+                        running_corrects += 1
             if phase == 'train':
                 scheduler.step()
 
             epoch_loss = running_loss / len(dataset[phase])
-            epoch_acc = running_corrects.double() / len(dataset[phase])
+            epoch_acc = running_corrects / len(dataset[phase])
 
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
@@ -214,19 +216,23 @@ def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,datase
 
 #confusion matrix function
 def eval_model(model,filename):
+    print("moving model to cpu")
     model.to('cpu')
     y_preds = []
     y_true = []
-    for inputs, labels in dataloaders["val"]:
-        outputs = model(inputs)
-        _, preds = torch.max(outputs, 1)
-        y_preds.extend(preds)
-        y_true.extend(labels.data)
-
+    print("beginning evaluation")
+    with torch.no_grad():
+        for inputs, labels in dataloaders["val"]:
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+            y_preds.extend(preds)
+            y_true.extend(labels.data)
+    print("generating/saving performance metrics")
     classes = train_dataset.classes
 
     cm = confusion_matrix(y_true,y_preds)
-
+    accuracy = round(sklearn.metrics.accuracy_score(y_true, y_preds),4)
+    print(accuracy)
     df_cm = pd.DataFrame(cm, index=[i for i in classes], columns=[i for i in classes])
     bal_acc = round(sklearn.metrics.balanced_accuracy_score(y_true, y_preds),4)
     plt.figure(figsize=(50, 30))
@@ -236,8 +242,8 @@ def eval_model(model,filename):
     sb.heatmap(df_cm, annot=True)
     print("Please specify a save folder")
     save_folder = tkinter.filedialog.askdirectory()
-    plt.savefig(save_folder+"/"+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'_balacc_'+str(bal_acc)+'.png')
-    print("Confusion matrix saved as "+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'_balacc_'+str(bal_acc)+'.png')
+    plt.savefig(save_folder+"/"+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'_res_'+str(resolution)+'_balacc_'+str(bal_acc)+'.png')
+    print("Confusion matrix saved as "+filename.split("/")[6].replace(".pkl","")+'_output_on_'+path.split("/")[1]+'_res_'+str(resolution)+'_balacc_'+str(bal_acc)+'.png')
 
 def sort_data():
     '''
@@ -290,7 +296,7 @@ if __name__ == '__main__':
                                                                      steps_per_epoch=round(train_size / batch_size),
                                                                      epochs=epochs, pct_start=0.3), epochs, dataloaders,
                                  datasets,plot=True)
-        str_acc = str(acc).split(",")[0].split("(")[1]
+        str_acc = str(round(acc,4))
         print("Please specify a save folder")
         save_folder = tkinter.filedialog.askdirectory()
         torch.save(model.state_dict(), save_folder + "/" + save_name + str_acc + "_ONECYCLE.pkl")
@@ -299,5 +305,6 @@ if __name__ == '__main__':
         filename = askopenfilename(defaultextension=".pickle")
         if not filename is None:
             print(filename.split("/")[5])
+            print("Loading model weights")
             model.load_state_dict(torch.load(filename))
             eval_model(model, filename)
