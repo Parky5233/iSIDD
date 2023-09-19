@@ -77,6 +77,7 @@ set_seed()
 #hyperparameters
 batch_size = 16
 resolution = 224 #1000: 58.49, 512: 56.6, 224: 31.13
+print("Your image resolution is set to "+str(resolution))
 inp = input('Please provide the model you wish to use \'ViT\'(1) or \'resnet\'(2): ')
 model_name = inp.strip().lower() #ViT or resnet
 shuffle = False
@@ -175,9 +176,11 @@ def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,datase
                         optimizer.step()
 
                 running_loss += loss.item() * inputs.size(0)
-                for pred in range(0,len(preds)):#running corrects may be not correctly calculated
-                    if (preds[pred] == labels.data[pred]):
+
+                for pred in range(0,len(preds)):
+                    if preds[pred] == labels.data[pred]:
                         running_corrects += 1
+
             if phase == 'train':
                 scheduler.step()
 
@@ -218,6 +221,7 @@ def train_model(model,criterion,optimizer,scheduler,num_epochs,dataloader,datase
 def eval_model(model,filename):
     print("moving model to cpu")
     model.to('cpu')
+    model.eval()
     y_preds = []
     y_true = []
     print("beginning evaluation")
@@ -225,16 +229,18 @@ def eval_model(model,filename):
         for inputs, labels in dataloaders["val"]:
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)
-            y_preds.extend(preds)
-            y_true.extend(labels.data)
+            print(len(preds))
+            # y_preds.extend(preds)
+            # y_true.extend(labels.data)
     print("generating/saving performance metrics")
     classes = train_dataset.classes
-
+    y_true = labels.data
+    y_preds = preds
     cm = confusion_matrix(y_true,y_preds)
     accuracy = round(sklearn.metrics.accuracy_score(y_true, y_preds),4)
-    print(accuracy)
     df_cm = pd.DataFrame(cm, index=[i for i in classes], columns=[i for i in classes])
     bal_acc = round(sklearn.metrics.balanced_accuracy_score(y_true, y_preds),4)
+    print("Accuracy: "+str(accuracy)+", Balanced Accuracy: "+str(bal_acc))
     plt.figure(figsize=(50, 30))
     plt.title("Confusion Matrix")
     plt.xlabel("Predicted")
