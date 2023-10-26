@@ -2,7 +2,6 @@ import copy
 import os
 import time
 import tkinter.filedialog
-
 import sklearn
 import torch
 import torch.nn as nn
@@ -76,7 +75,7 @@ set_seed()
 
 #hyperparameters
 batch_size = 16
-resolution = 224 #1000: 58.49, 512: 56.6, 224: 31.13
+resolution = 224
 print("Your image resolution is set to "+str(resolution))
 inp = input('Please provide the model you wish to use \'ViT\'(1) or \'resnet\'(2): ')
 model_name = inp.strip().lower() #ViT or resnet
